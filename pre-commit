@@ -43,7 +43,7 @@ trap "cleanup" SIGINT SIGTERM
 # Prepares the dictionary from scratch in case new words were added since last time.
 function prepare_dictionary() {
 
-    local_dict=$(find . -name *.$extension -exec ls {} \;)
+    local_dict=$(find ~/.aspell -name *.$extension -exec ls {} \;)
     if [ -z "$local_dict" ]; then
         sort -u $temp_dict -o $temp_dict
         aspell --lang="$lang" create master "$temp_dict" < "$dict"
