@@ -17,7 +17,7 @@ set -e
 # The following is a text file that represents your custom dictionary; edit as necessary. Add words to it that you wish
 # to ignore for the spell check.
 dict=~/.git-spell-check
-if [ ! -f $dict ]; then
+if [ ! -f "$dict" ]; then
     touch ~/.git-spell-check
     dict=~/.git-spell-check
     printf "%s\n" "Custom dictionary not found. Created ~/.git-spell-check..."
@@ -45,15 +45,15 @@ function prepare_dictionary() {
 
     local_dict=$(find ~/.aspell -name *.$extension -exec ls {} \;)
     if [ -z "$local_dict" ]; then
-        sort -u $temp_dict -o $temp_dict
+        sort -u "$temp_dict" -o $temp_dict
         aspell --lang="$lang" create master "$temp_dict" < "$dict"
     else
         temp_file=$(mktemp --tmpdir temp_file-XXXXXX)
         for file in $local_dict; do
-            cat $file >> $temp_file
+            cat "$file" >> "$temp_file"
         done
-        cat $dict >> $temp_file
-        sort -u $temp_file -o $temp_file
+        cat "$dict" >> "$temp_file"
+        sort -u "$temp_file" -o "$temp_file"
         aspell --lang="$lang" create master "$temp_dict" < "$temp_file"
         /bin/rm -f "$temp_file"
     fi
@@ -80,10 +80,8 @@ function spell_check() {
 -------------------------------------------------"
     echo $words
     for word in $words; do
-        grep --color=always --exclude-dir={.git,tmp} -HIrone "\<$word\>" $(git diff --cached --name-only --diff-filter=ACMRTUXB) | awk -F ":" '{print "File: " $1 "\ton line: " $2 "\tTypo: " $3}'
-        printf "%s\n" "-------------------"
+        grep -m 1 --color=always --exclude-dir={.git,tmp} -HIrone "\<$word\>" "$(git diff --cached --name-only --diff-filter=ACMRTUXB)" | sort | uniq | awk -F ":" '{print "File: " $1 "\ton line: " $2 "\tTypo: " $3}'
     done
-
 }
 
 # Adds all, some, or none of the misspelled words to the custom dictionary.
@@ -129,10 +127,13 @@ Add any of the misspelled words into your custom dictionary?
 }
 
 # Adds all words to the custom dictionary and continues with the commit.
+# 
+# ...However, rather than disable checking, it is preferable to clean the input word list. This can be done by using the command
+# aspell --local-data-dir=./ --lang=lang clean < wordlist > result
+# http://aspell.net/man-html/Creating-an-Individual-Word-List.html
 function add_all() {
-
-    for word in $words; do
-        echo $word >> "$dict"
+    for word in $(echo $words | aspell clean); do
+        echo "$word" >> "$dict"
     done
 
 }
@@ -148,7 +149,7 @@ function add_some() {
             shopt -s nocasematch
             case "$answer" in
                 y|yes)
-                    echo $word >> "$dict"
+                    echo "$word" >> "$dict"
                     printf "%s\n" "\"$word\" added to your custom dictionary."
                     break ;;
                 n|no)
@@ -175,3 +176,4 @@ function add_none() {
 prepare_dictionary
 spell_check
 add_words_to_dict
+echo "done with spell check"
